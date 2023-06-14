@@ -1,0 +1,254 @@
+/**
+ * CalculatorGrammer.jj is for a calculator with four operations
+ */
+
+options
+{
+  static = false;
+}
+
+PARSER_BEGIN(Calculator)
+
+import java.io.*;
+import java.util.ArrayList;
+
+public class Calculator
+{
+  public static void main(String args []) throws ParseException, TokenMgrError, NumberFormatException
+  {
+    try {  
+      Calculator parser = new Calculator(new FileInputStream("E:\\DriveFolder\\Academic_stuff\\UIU\\course_stuff\\8th_Trimester\\CompilerLab\\assignment_&_labwork_Compiler_Lab\\assignments\\Assignment_04_withJavaCC\\src\\others\\input.txt"));
+      parser.Start(System.out);
+    }catch(Exception e) {
+      e.printStackTrace();
+    }    
+   
+  }
+
+  static ArrayList<Variable> variables = new ArrayList<Variable>();
+  float previousValue = (float) 0.0;
+  int expCount = 1;
+}
+
+PARSER_END(Calculator)
+
+// setting up RegX for tokens
+SKIP :
+{
+  " "
+}
+
+SKIP : /* new line */
+{
+  < EOL :  "\r" | "\t" | "\n" >  
+}
+
+TOKEN :
+{
+  < EOE : ";" >
+}
+
+TOKEN :
+{
+  < VAR : (["a"-"z"]|["A"-"Z"])+ >
+}
+
+
+TOKEN : /* OPERATORS */
+{
+  < PLUS : "+" >
+| < MINUS : "-" >
+| < MULTIPLY : "*" >
+| < DIVIDE : "/" >
+| < ASSIGN : "=" >
+}
+
+
+TOKEN :
+{
+  < NUMBER : <DIGITS> | <DIGITS> "." <DIGITS> | <DIGITS> "." | "." <DIGITS> >  
+}
+
+TOKEN :
+{
+  < #DIGITS : (["0"-"9"])+ > 
+}
+
+TOKEN :
+{
+  < OPEN_PAR : "(" > 
+}
+
+TOKEN :
+{
+  < CLOSE_PAR : ")" > 
+}
+
+TOKEN :
+{
+  < PREVIOUS : "$" > 
+}
+
+
+
+Variable searchVariables(String var):
+{
+  Variable variable;   
+}
+
+{
+  {
+     variable = null;
+     if(variables != null) {
+       for(Variable tVar: variables) {
+         if(tVar.name.equals(var)) {
+           variable = tVar;
+           break;
+         }  
+       }       
+     }
+     return variable;
+  }
+  
+}
+
+float Primary() throws NumberFormatException:
+{
+  Token t;
+  float d;
+}
+
+{
+  t = < NUMBER >
+  {
+    return Float.parseFloat(t.image);
+  }
+|
+  < PREVIOUS >
+  {
+    return previousValue;
+  }
+|
+  < OPEN_PAR > d = Expression() < CLOSE_PAR >
+  {
+    return d;
+  }
+|
+  < MINUS > d = Primary()
+  {
+	return -d;
+  }
+
+}
+
+float Term() throws NumberFormatException:
+{
+	float i;
+	float value;
+}
+
+{
+	value = Primary()
+	(
+		< MULTIPLY >
+		i = Primary()
+		{ value *= i; }
+	|
+		< DIVIDE >
+		i = Primary()
+		{ value /= i; }
+	 
+	)*
+
+	{ return value; }
+}
+
+
+float Expression() throws NumberFormatException:
+{
+	float i;
+	float value;  
+}
+
+{
+  value = Term()
+  (
+    < PLUS >
+    i = Term()
+    { value += i; }
+
+  |
+
+  	< MINUS >
+    i = Term()
+    { value -= i; }
+    
+  )* 
+
+  {
+    return value;
+  }
+}
+
+
+// Start - > (Expression EOL)* EOF 
+void Start(PrintStream printStream) throws NumberFormatException :
+{
+  Token t;
+  Variable var;
+}
+
+{
+  (
+    t = < VAR >
+    (
+      
+    < EOE >
+    {
+      var = searchVariables(t.image);
+      if(var != null) {
+        printStream.println( "Value of  " + t.image + "(same as before): " + var.value ); expCount++;
+      }else {
+        printStream.println( "Value of  " + t.image + "is not found!" ); expCount++;
+      }
+      
+    }
+  | 
+    
+    < ASSIGN >
+    previousValue = Expression()
+    < EOE >
+    {
+      var = searchVariables(t.image);
+      if(var != null) {
+        var.value = previousValue;
+        printStream.println( "Value of  " + t.image + "(updated): " + var.value ); expCount++;
+      }else {
+        variables.add(new Variable(t.image, previousValue));
+        printStream.println( "Value of  " + t.image + "(newly created): " + previousValue ); expCount++;
+      }
+      
+    }
+  )
+  | 
+    previousValue = Expression()
+    < EOE >
+    { printStream.println( "Result of expression " + expCount + ": " + previousValue ); expCount++;}
+    
+  )*
+
+  < EOF >
+}
+
+
+
+
+
+
+
+
+
+
+
+
+  
